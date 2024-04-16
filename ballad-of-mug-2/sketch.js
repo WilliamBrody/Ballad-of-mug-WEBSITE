@@ -18,7 +18,7 @@ let gameState = false;
 let dashCooldown;
 let highScore;
 let reset;
-let level = 1;
+let level = 0;
 let onGround = true
 let jump = false
 let fallDist = -3
@@ -36,8 +36,8 @@ let damage = [
   [2, 3, 6]
 ]
 let mode;
-let mugX = [25, 525, 25];
-let mugY = [350, 50, 350];
+let mugX = [90, 525, 25];
+let mugY = [350, 49, 350];
 let spikeArr = [];
 let spike;
 let climb = true
@@ -60,7 +60,7 @@ function setup() {
   // coin definitions go here
   coinArr.push(new Coin(560, 290, 10));
 
-  lvl3coinArr.push(new Coin(130, 50, 10), new Coin(340, 150, 10), new Coin(500, 250, 10));
+  lvl3coinArr.push(new Coin(120, 50, 10), new Coin(500, 250, 10), new Coin(300, 150, 10), new Coin(350, 250, 10));
   lvl2coinArr.push(new Coin(560, 250, 10), new Coin(470, 150, 10), new Coin(305, 150, 10), new Coin(130, 150, 10), new Coin(390, 350, 10), new Coin(220 , 350, 10));
 
   easyButton = createButton('Easy')
@@ -272,22 +272,22 @@ class Mug {
     this.loc = new createVector(x, y);
     this.health = 5;
     this.deltaX = 1;
+    this.deltaY = 0;
     this.currentFrame = 0;
+    this.originalY = this.loc.y;
     this.attacking = false;
     this.attackCooldown = 0;
   }
 
   move() {
-    if (this.loc.x > 550) {
-      this.loc.x = 550;
-    }
     if (!this.attacking) {
       if (keyIsDown(82) && dashCooldown == 0) {  //R: dash
         let dashSpeed = 200
         for (let i = 0; i < blocks.length; i++) {
-          if (blocks[i].collide(this.loc.x + 200, this.loc.y, 50, 50)) {
-            dashSpeed = blocks[i].x - this.loc.x - 50
+          if (blocks[i].collide(this.loc.x + 200 * this.deltaX, this.loc.y, 50, 50)) {
+            dashSpeed = blocks[i].x - this.loc.x*this.deltaX - 50*this.deltaX
           }
+          
           if (blocks[i].y + blocks[i].h == ground && this.loc.x + 50 < blocks[i].x && this.loc.x >= blocks[i].x - 200 && this.deltaX == 1) {
             dashSpeed = blocks[i].x - this.loc.x - 52
             break
@@ -299,170 +299,82 @@ class Mug {
           }
 
         }
+        if (this.loc.x + dashSpeed*-1 < 0) dashSpeed = this.loc.x
         dashCooldown = 5;
         this.loc.x += dashSpeed * this.deltaX
+      }
 
-      } else if (keyIsDown(68) && this.loc.x < 550) {  //D: right
-        this.deltaX = 1
+      if (keyIsDown(65)) {
+        this.deltaX = -1;
         this.loc.x += this.deltaX;
         if (frameCount % 10 == 0) this.currentFrame += 1;
-      } else if (keyIsDown(65) && this.loc.x > 0) {   //A:left
-        this.deltaX = -1
+      } else if (keyIsDown(68)) {
+        this.deltaX = 1;
         this.loc.x += this.deltaX;
         if (frameCount % 10 == 0) this.currentFrame += 1;
-      }
-      let m = 0;
-      // collision
-      for (let i = 0; i < blocks.length; i++) {
-        if (blocks[i].collide(this.loc.x, this.loc.y, 50, 50)) {
-          if (blocks[i].type == "Spike") {
-            this.health -= 1;
-            this.loc.x = mugX[level];
-            this.loc.y = mugY[level];
-            jump = false;
-            fall = true;
-            this.attacking = false
-          }
-        }
-        if (blocks[i].collide(this.loc.x, this.loc.y, 50, 50)) {
-            
-          
-          if (mug.loc.y + 50 != blocks[i].y && keyIsDown(68))
-            this.loc.x -= this.deltaX;//to counteract walking to right normally
-          else if (mug.loc.y + 50 == blocks[i].y) {
-            ground = blocks[i].y
-          }
-
-          if (mug.loc.y + 50 != blocks[i].y && keyIsDown(65)) {
-            this.loc.x -= this.deltaX;//to counteract walking to right normally
-          } else if (mug.loc.y + 50 == blocks[i].y) {
-            ground = blocks[i].y
-          }
-
-          if (keyIsDown(87) && !jump && !fall && climb == true) {
-            this.loc.y -= 1;
-            // walljump kickoff fix (hopefully)
-            if (keyIsDown(32)) {
-              kickoff=true
-              if (keyIsDown(68)) {
-                this.loc.x -= 32
-                this.loc.y -= 70;
-                // for (let j = 0; j < 1000; j++) {
-                //   if (j%100==0) this.loc.y -= 4
-                // }
-                
-              } else if (keyIsDown(65)) {
-                this.loc.x += 32;
-                this.loc.y -= 70;
-              }
-              
-            }
-          }
-          
-        }if (kickoff && (this.loc.y+50==ground || this.loc.y+51==ground)) {
-                kickoff=false
-              }
-        if (blocks[i].collide(this.loc.x, this.loc.y, 50, 50) || blocks[i].collide(this.loc.x, this.loc.y, 51, 51)) {
-          m++;
-        }
-      }
-      if (m == 0 && !jump && !fall && this.loc.y + 50 != 400) {
-        fall = true;
-      }
-      if (fall) {
-        for (let i = 0; i < blocks.length; i++) {
-          if (blocks[i].collide(this.loc.x, this.loc.y, 50 + 1, 50 + 1)) {//NEW
-            //print("collide")
-            if (keyIsDown(87)) {
-              this.loc.y -= 1;
-              fall = false;
-            }
-          } else {
-            this.loc.y += 1
-            if (this.loc.y > 350) {
-              fall = false;
-              this.loc.y = 350;
-              ground = 400;
-            }
-          }
-        }
-      }
-
-      // reset animation lab
-      if (this.currentFrame > 2) {
-        this.currentFrame = 0;
-      } else if (this.currentFrame < 0) {
-        this.currentFrame = 2;
       }
     }
-    // spacebar pressed
 
-    if (keyIsDown(32) && kickoff == false) jump = true;
+    // JUMP
+    if (keyIsDown(32) && this.originalY == this.loc.y) {
+      this.deltaY = -3;
+      this.originalY = this.loc.y;
+    }
+    this.loc.y += this.deltaY;
+    if (this.originalY - this.loc.y > 60) {
+      this.deltaY = 1;
+    }
+    if (this.loc.y >= this.originalY && this.deltaY == 1) {
+      this.deltaY = 0;
+      this.loc.y = this.originalY;
+    }
 
+    // BLOCKS COLLISION
     for (let i = 0; i < blocks.length; i++) {
-      if (this.loc.y > blocks[i].y + blocks[i].h && this.loc.y <= blocks[i].y + blocks[i].h + 2) {
-      }
-    }
-    if (jump) {
-      for (let i = 0; i < blocks.length; i++) {
-        if (keyIsDown(87) && blocks[i].collide(this.loc.x, this.loc.y, 50 + 1, 50 + 1)) {
-          if (climb) {
-            if (this.loc.y + 50 > blocks[i].y + 2) {
-              this.loc.y -= 1;
-              jump = false;
-            }
+      if (blocks[i].collide(this.loc.x, this.loc.y, 50, 50)) {
+        if (blocks[i].type == "Spike") {
+          this.health --;
+          this.loc.x = mugX[level];
+          this.loc.y = mugY[level];
+          this.attacking = false
+        }
+        if (blocks[i].type == "Block") {
+
+          // Y COLLISION
+          if (this.loc.y + 50 >= blocks[i].y && this.deltaY != -3) {
+            this.loc.y --;
+            this.originalY = this.loc.y+1;
+          } else if (this.loc.y <= blocks[i].y + blocks[i].h && this.deltaY == -3) {
+            this.loc.y += 4;
+            this.deltaY = 0;
           }
 
-        }
-      }
-
-      // JUMP 
-      this.loc.y += fallDist;
-      if (this.loc.y <= ground - 130) {
-        fallDist *= -1;
-      }
-      for (let i = 0; i < blocks.length; i++) {
-
-        if (this.loc.x <= blocks[i].x + blocks[i].w - 2 && this.loc.x >= blocks[i].x + 2 && this.loc.y <= blocks[i].y + blocks[i].h + 2 && this.loc.y >= blocks[i].y + blocks[i].h - 2) {
-
-          climb = false
-
-        }
-      }
-
-
-      // handles jumping on blocks
-      for (let i = 0; i < blocks.length; i++) {
-        if (this.loc.x >= blocks[i].x - 40 && this.loc.x <= blocks[i].x + blocks[i].w - 1 && this.loc.y <= blocks[i].y - 40 && this.loc.y >= blocks[i].y - 50) {
-          // print("hello")  
-          jump = false;
-          ground = blocks[i].y;
-          fallDist *= -1;
-          this.loc.y = blocks[i].y - 50;
-          break
-        }
-      }
-
-      //resets when on floor of canvas
-      if (this.loc.y >= 351) {
-        ground = 400
-        climb = true
-        this.loc.y = 350
-        jump = false
-        fallDist *= -1
-      }
-    }
-
-
-    if (this.loc.y <= ground - 50 && !jump && !fall) {
-      for (let i = 0; i < blocks.length; i++) {
-        if ((this.loc.x <= blocks[i].x - 49 && this.loc.x >= blocks[i].x - 50 && keyIsDown(65)) || this.loc.x >= blocks[i].x + blocks[i].w - 1 && this.loc.x <= blocks[i].x + blocks[i].w && keyIsDown(68)) {
-          fall = true
-          break
+          // X COLLISION
+          if (this.loc.y + 50 >= blocks[i].y)   { // prevents you from being pushed off of the block, when walking on top
+            if (this.loc.x + 50 >= blocks[i].x && this.deltaX == 1) this.loc.x --;
+            else if (this.loc.x <= blocks[i].x + blocks[i].w && this.deltaX == -1) this.loc.x ++;
+          }
+          // CLIMB
+          if (keyIsDown(87)) {
+            this.loc.y --;
+          }
+          if (keyIsDown(32)) {
+            this.deltaY = -3;
+            this.loc.x -= this.deltaX*5;
+            this.originalY = this.loc.y;
+          }
         }
       }
     }
-    
+
+    // RESET FRAME LOOP
+    if (this.currentFrame > 2) this.currentFrame = 0;
+
+    // GRAVITY
+    if (this.loc.y < 350) this.loc.y++;
+
+    // DOUBLE JUMP PREVENT
+    if (this.loc.y == 350) this.originalY = 350;
   }
 
   draw() {
@@ -608,21 +520,25 @@ class Bound {
   
 
   collide(x, y, w, h) {
-    let temp = 0;
-    if (this.type == "Spike") temp = -70;
+    let boundY = this.y;
+    let boundYHeight = this.h;
+    if (this.type == "Spike") {
+      boundY += 73; // Adjust this value as needed
+      boundYHeight -= 58;
+    }
     if (w == 50 || w == 60) {
       return (
         this.x <= x + w &&
         this.x + this.w >= x &&
-        this.y - temp <= y + h &&
-        this.y + this.h + temp >= y
+        boundY <= y + h &&
+        boundY+ boundYHeight >= y
       );
     } else {
       return (
         this.x <= x + w &&
         this.x + this.w + 1 >= x &&
-        this.y - temp <= y + h &&
-        this.y + this.h + temp >= y
+        boundY <= y + h &&
+        boundY + boundYHeight >= y
       );
     }
   }
